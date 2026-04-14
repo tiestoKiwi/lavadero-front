@@ -93,7 +93,9 @@ button {
 .login-accounts,
 .nav-list,
 .reservations-list,
-.card-grid {
+.card-grid,
+.staff-list,
+.staff-form {
   display: grid;
   gap: 16px;
 }
@@ -573,6 +575,72 @@ button {
   gap: 18px;
 }
 
+.staff-row {
+  border-radius: 18px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  display: grid;
+  gap: 12px;
+}
+
+.staff-main,
+.staff-actions,
+.checkbox-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.staff-copy,
+.staff-message {
+  margin: 0;
+}
+
+.staff-copy {
+  color: var(--muted);
+}
+
+.staff-actions {
+  justify-content: flex-start;
+}
+
+.staff-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.staff-form label {
+  display: grid;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.staff-form input,
+.staff-form select {
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--surface-strong);
+  padding: 12px 14px;
+  color: var(--text);
+}
+
+.staff-form .checkbox-row {
+  grid-column: 1 / -1;
+  justify-content: flex-start;
+  font-weight: 700;
+}
+
+.staff-form .primary-button,
+.staff-message {
+  grid-column: 1 / -1;
+}
+
+.staff-message {
+  color: var(--teal);
+  font-weight: 700;
+}
+
 .reservation-header {
   justify-content: space-between;
   align-items: flex-start;
@@ -667,7 +735,8 @@ button {
   }
 
   .filters-row,
-  .reservation-row {
+  .reservation-row,
+  .staff-form {
     grid-template-columns: 1fr;
   }
 
@@ -678,7 +747,8 @@ button {
   .topbar,
   .section-heading,
   .reservation-header,
-  .nav-item {
+  .nav-item,
+  .staff-main {
     flex-direction: column;
     align-items: flex-start;
   }

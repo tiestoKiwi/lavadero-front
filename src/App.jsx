@@ -1,12 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 const SESSION_KEY = "lavadero_admin_session";
-
-const users = [
-  ["Paula Herrera", "Gerencia general", "admin@lavadero.com", "Admin123*"],
-  ["Camilo Rojas", "Coordinacion operativa", "operaciones@lavadero.com", "Turnos123*"],
-  ["Luisa Gomez", "Cuenta corporativa", "comercial@lavadero.com", "Ventas123*"],
-];
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL ?? "http://localhost:8080").replace(/\/$/, "");
 
 const navGroups = [
   {
@@ -20,6 +15,7 @@ const navGroups = [
     title: "Operacion diaria",
     items: [
       ["reservas", "Reservas", "Agenda del dia", "Agenda"],
+      ["staff", "Staff", "Usuarios internos", "CRUD"],
       ["operacion", "Operacion", "Sedes y equipos", "Turnos"],
       ["servicios", "Servicios", "Oferta y margen", "Catalogo"],
     ],
@@ -30,108 +26,51 @@ const navGroups = [
   },
 ];
 
-const reservations = [
-  ["RES-2401", "Andrea Pardo", "Mazda CX-5", "KXR219", "Chapinero", "App movil", "en proceso", "08:30", "55 min", 78000, "Pagado", "Equipo Norte", "Lavado premium + motor"],
-  ["RES-2402", "Carlos Varela", "Renault Logan", "JTW441", "Cedritos", "WhatsApp", "confirmada", "09:10", "40 min", 46000, "Pendiente", "Equipo Express", "Lavado basico"],
-  ["RES-2403", "Marta Rueda", "Toyota Prado", "KLO880", "Chapinero", "Recepcion", "completada", "07:40", "70 min", 124000, "Pagado", "Equipo Detail", "Detail interior"],
-  ["RES-2404", "Logistica Delta", "Nissan Frontier", "FLT552", "Zona Industrial", "Web admin", "confirmada", "10:00", "60 min", 98000, "Facturar", "Equipo Flotas", "Lavado flota ejecutiva"],
-  ["RES-2405", "Sara Ospina", "Kia Picanto", "MFP203", "Cedritos", "App movil", "pendiente", "10:25", "35 min", 38000, "Pendiente", "Por asignar", "Lavado rapido"],
-  ["RES-2406", "Grupo Nova", "Chevrolet Tracker", "NVA901", "Chapinero", "Asesor comercial", "no show", "08:50", "45 min", 62000, "Sin cobro", "Equipo Norte", "Lavado premium"],
-].map(([id, customer, vehicle, plate, location, channel, status, time, duration, ticket, payment, staff, service]) => ({
-  id,
-  customer,
-  vehicle,
-  plate,
-  location,
-  channel,
-  status,
-  time,
-  duration,
-  ticket,
-  payment,
-  staff,
-  service,
-}));
 
-const customers = [
-  ["Logistica Delta", "Corporativo", 2480000, "Hoy 10:00", "activa", "Cuenta premium con foco en facturacion semanal."],
-  ["Andrea Pardo", "Frecuente", 234000, "Hoy 08:30", "fidelizada", "Alta aceptacion de servicios adicionales."],
-  ["Grupo Nova", "Corporativo", 1180000, "Hoy 08:50", "riesgo", "Requiere seguimiento por no show en sede principal."],
-  ["Carlos Varela", "Recurrente", 92000, "Hoy 09:10", "activa", "Buen potencial para upsell a premium."],
-];
-
-const services = [
-  ["Lavado premium", 68000, "61%", "55 min"],
-  ["Lavado basico", 38000, "47%", "35 min"],
-  ["Detail interior", 124000, "66%", "70 min"],
-  ["Lavado flota ejecutiva", 98000, "58%", "60 min"],
-];
-
-const locations = [
-  ["Chapinero", "86%", "4 de 5 bahias", "Mayor demanda del dia."],
-  ["Cedritos", "64%", "3 de 4 bahias", "Captar walk-ins de media manana."],
-  ["Zona Industrial", "72%", "2 de 3 bahias", "Prioridad en bloque corporativo."],
-];
-
-const financeAlerts = [
-  "Tres reservas requieren cierre manual en caja.",
-  "Una cuenta corporativa debe salir con factura hoy.",
-  "Validar recaudo de Cedritos antes del cierre de turno.",
-];
-
-const dashboardTrend = [
-  ["07:00", 32000],
-  ["08:00", 78000],
-  ["09:00", 124000],
-  ["10:00", 182000],
-  ["11:00", 246000],
-  ["12:00", 318000],
-  ["13:00", 384000],
-];
-
-const weeklyCashTrend = [
-  ["Lun", 285000],
-  ["Mar", 312000],
-  ["Mie", 298000],
-  ["Jue", 356000],
-  ["Vie", 402000],
-  ["Sab", 448000],
-  ["Hoy", 384000],
-];
-
-const channelMix = [
-  ["App movil", 2, "#c65a2f"],
-  ["WhatsApp", 1, "#d69732"],
-  ["Recepcion", 1, "#2f7065"],
-  ["Web admin", 1, "#17313b"],
-  ["Asesor comercial", 1, "#b94b4b"],
-];
-
-const statusMix = [
-  ["Confirmadas", 2, "#d69732"],
-  ["En proceso", 1, "#2f7065"],
-  ["Completadas", 1, "#1f8f72"],
-  ["Pendientes", 1, "#c65a2f"],
-  ["No show", 1, "#b94b4b"],
-];
-
-const paymentMix = [
-  ["Pagado", 2, "#2f7065"],
-  ["Pendiente", 2, "#c65a2f"],
-  ["Facturar", 1, "#d69732"],
-  ["Sin cobro", 1, "#b94b4b"],
-];
+const emptyStaffForm = {
+  companyId: "",
+  locationId: "",
+  fullName: "",
+  email: "",
+  phone: "",
+  role: "washer",
+  hourlyRate: "",
+  commissionPct: "",
+  isActive: true,
+};
 
 const moduleMeta = {
   dashboard: ["Lectura gerencial", "KPIs diarios con foco administrativo", "Vista ejecutiva para revisar demanda, caja y sedes."],
   reservas: ["Control operativo", "Agenda, filtros y seguimiento de reservas", "Seguimiento del servicio del dia con estado, cobro y asignacion."],
   clientes: ["Relacion comercial", "Clientes frecuentes, corporativos y en riesgo", "Lectura comercial de valor, recurrencia y seguimiento."],
   servicios: ["Oferta y margen", "Servicios principales y oportunidades", "Portafolio para decidir que promocionar y que proteger."],
+  staff: ["Talento interno", "CRUD de staff_users por compania", "Gestion administrativa de usuarios internos por empresa y sede."],
   operacion: ["Sedes y talento", "Capacidad instalada y ritmo del equipo", "Control de sedes y ritmo operativo."],
   finanzas: ["Caja y recaudo", "Cobros pendientes y pulso diario", "Visibilidad rapida para gerencia administrativa."],
 };
 
 const money = new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 });
+const emptyDashboard = {
+  summary: {
+    reservationsToday: 0,
+    activeNow: 0,
+    completedToday: 0,
+    pendingPayments: 0,
+    pendingCollection: 0,
+    revenueToday: 0,
+    avgTicket: 0,
+    noShowRate: "0%",
+  },
+  sidebarStats: [],
+  alerts: [],
+  charts: {
+    dashboardTrend: [],
+    weeklyCashTrend: [],
+    channelMix: [],
+    statusMix: [],
+    paymentMix: [],
+  },
+};
 
 function tone(value) {
   return value.toLowerCase().replaceAll(" ", "-").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -141,7 +80,64 @@ function initials(name) {
   return name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
 }
 
+function normalizeError(error) {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return "No fue posible completar la operacion.";
+}
+
+function buildEmptyStaffForm(meta) {
+  const firstCompanyId = meta?.companies?.[0]?.id ? String(meta.companies[0].id) : "";
+  const firstLocation = meta?.locations?.find((item) => String(item.companyId) === firstCompanyId);
+
+  return {
+    companyId: firstCompanyId,
+    locationId: firstLocation ? String(firstLocation.id) : "",
+    fullName: "",
+    email: "",
+    phone: "",
+    role: "washer",
+    hourlyRate: "",
+    commissionPct: "",
+    isActive: true,
+  };
+}
+
+async function apiRequest(path, options = {}) {
+  const config = {
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers ?? {}),
+    },
+    ...options,
+  };
+
+  const response = await fetch(`${API_BASE_URL}${path}`, config);
+  const contentType = response.headers.get("content-type") || "";
+  const payload = contentType.includes("application/json") ? await response.json() : null;
+
+  if (!response.ok) {
+    const message = Array.isArray(payload?.message) ? payload.message.join(", ") : payload?.message;
+    throw new Error(message || `La API respondio con estado ${response.status}.`);
+  }
+
+  return payload;
+}
+
+function toLineSeries(data) {
+  return (data ?? []).map((item) => [item.label, item.value]);
+}
+
+function toDonutSeries(data) {
+  return (data ?? []).map((item) => [item.label, item.value, item.color]);
+}
+
 function LineChart({ data, valueFormatter }) {
+  if (!data.length) {
+    return <div className="chart-shell"><p className="section-note">Sin datos suficientes para la grafica.</p></div>;
+  }
+
   const width = 640;
   const height = 240;
   const padding = 20;
@@ -190,6 +186,10 @@ function LineChart({ data, valueFormatter }) {
 }
 
 function DonutChart({ data, valueFormatter }) {
+  if (!data.length) {
+    return <div className="donut-layout"><p className="section-note">Sin datos suficientes para la grafica.</p></div>;
+  }
+
   const total = data.reduce((sum, item) => sum + item[1], 0);
   let current = 0;
   const gradient = data
@@ -229,8 +229,27 @@ function App() {
   const [statusFilter, setStatusFilter] = useState("todas");
   const [locationFilter, setLocationFilter] = useState("todas");
   const [search, setSearch] = useState("");
+  const [dashboard, setDashboard] = useState(emptyDashboard);
+  const [demoAccounts, setDemoAccounts] = useState([]);
+  const [reservations, setReservations] = useState([]);
+  const [reservationMeta, setReservationMeta] = useState({ statusOptions: ["todas"], locationOptions: ["todas"] });
+  const [customers, setCustomers] = useState([]);
+  const [services, setServices] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const [staffUsers, setStaffUsers] = useState([]);
+  const [staffMeta, setStaffMeta] = useState({ companies: [], locations: [], roles: [] });
+  const [staffCompanyFilter, setStaffCompanyFilter] = useState("todas");
+  const [editingStaffId, setEditingStaffId] = useState(null);
+  const [staffForm, setStaffForm] = useState(emptyStaffForm);
+  const [staffMessage, setStaffMessage] = useState("");
+  const [staffError, setStaffError] = useState("");
+  const [staffLoading, setStaffLoading] = useState(false);
+  const [staffSaving, setStaffSaving] = useState(false);
+  const [pageError, setPageError] = useState("");
+  const [pageLoading, setPageLoading] = useState(false);
   const [credentials, setCredentials] = useState({ email: "", password: "" });
   const [loginError, setLoginError] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
   const [session, setSession] = useState(() => {
     const stored = typeof window === "undefined" ? null : window.localStorage.getItem(SESSION_KEY);
     if (!stored) return null;
@@ -250,78 +269,328 @@ function App() {
     }
   }, [session]);
 
-  const metrics = useMemo(() => {
-    const completed = reservations.filter((item) => item.status === "completada").length;
-    const active = reservations.filter((item) => item.status === "en proceso").length;
-    const pendingCount = reservations.filter((item) => item.payment === "Pendiente").length;
-    const pendingCollection = reservations.reduce((sum, item) => {
-      return item.payment === "Pendiente" || item.payment === "Facturar" ? sum + item.ticket : sum;
-    }, 0);
-    const revenue = reservations.reduce((sum, item) => (item.status === "no show" ? sum : sum + item.ticket), 0);
-    return {
-      reservationsToday: reservations.length,
-      activeNow: active,
-      completedToday: completed,
-      pendingPayments: pendingCount,
-      pendingCollection,
-      revenueToday: revenue,
-      avgTicket: Math.round(revenue / Math.max(reservations.length - 1, 1)),
-      noShowRate: `${Math.round((1 / reservations.length) * 100)}%`,
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadDemoAccounts() {
+      try {
+        const response = await apiRequest("/api/admin/demo-accounts");
+        if (!cancelled) {
+          setDemoAccounts(response.data ?? []);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setLoginError(normalizeError(error));
+        }
+      }
+    }
+
+    loadDemoAccounts();
+
+    return () => {
+      cancelled = true;
     };
   }, []);
 
-  const sidebarStats = useMemo(() => {
-    return [
-      ["Reservas", String(metrics.reservationsToday)],
-      ["Cobros", String(metrics.pendingPayments)],
-      ["Sedes", String(locations.length)],
-      ["Clientes", String(customers.length)],
-    ];
-  }, [metrics]);
+  useEffect(() => {
+    if (!session) return;
 
-  const filteredReservations = useMemo(() => {
-    return reservations.filter((item) => {
-      const matchesStatus = statusFilter === "todas" || item.status === statusFilter;
-      const matchesLocation = locationFilter === "todas" || item.location === locationFilter;
-      const haystack = `${item.customer} ${item.vehicle} ${item.plate} ${item.id}`.toLowerCase();
-      const matchesSearch = search.trim() === "" || haystack.includes(search.toLowerCase());
-      return matchesStatus && matchesLocation && matchesSearch;
-    });
-  }, [locationFilter, search, statusFilter]);
+    let cancelled = false;
 
-  const statusOptions = ["todas", ...new Set(reservations.map((item) => item.status))];
-  const locationOptions = ["todas", ...new Set(reservations.map((item) => item.location))];
+    async function loadConsoleData() {
+      setPageLoading(true);
+      try {
+        const [dashboardResponse, customersResponse, servicesResponse, locationsResponse] = await Promise.all([
+          apiRequest("/api/dashboard"),
+          apiRequest("/api/customers"),
+          apiRequest("/api/services"),
+          apiRequest("/api/locations"),
+        ]);
+
+        if (cancelled) return;
+
+        setDashboard(dashboardResponse ?? emptyDashboard);
+        setCustomers(customersResponse.data ?? []);
+        setServices(servicesResponse.data ?? []);
+        setLocations(locationsResponse.data ?? []);
+        setPageError("");
+      } catch (error) {
+        if (!cancelled) {
+          setPageError(normalizeError(error));
+        }
+      } finally {
+        if (!cancelled) {
+          setPageLoading(false);
+        }
+      }
+    }
+
+    loadConsoleData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session]);
+
+  useEffect(() => {
+    if (!session) return;
+
+    let cancelled = false;
+
+    async function loadReservations() {
+      try {
+        const params = new URLSearchParams();
+        if (statusFilter !== "todas") params.set("status", statusFilter);
+        if (locationFilter !== "todas") params.set("location", locationFilter);
+        if (search.trim()) params.set("search", search.trim());
+        const query = params.toString() ? `?${params.toString()}` : "";
+        const response = await apiRequest(`/api/reservations${query}`);
+        if (cancelled) return;
+        setReservations(response.data ?? []);
+        setReservationMeta(response.filters ?? { statusOptions: ["todas"], locationOptions: ["todas"] });
+        setPageError("");
+      } catch (error) {
+        if (!cancelled) {
+          setPageError(normalizeError(error));
+        }
+      }
+    }
+
+    loadReservations();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session, search, statusFilter, locationFilter]);
+
+  useEffect(() => {
+    if (!session) return;
+
+    let cancelled = false;
+
+    async function loadStaffMeta() {
+      try {
+        const meta = await apiRequest("/api/staff-users/meta/options");
+        if (cancelled) return;
+        setStaffMeta(meta);
+        setStaffForm((current) => {
+          if (current.companyId) {
+            return current;
+          }
+          return buildEmptyStaffForm(meta);
+        });
+      } catch (error) {
+        if (!cancelled) {
+          setStaffError(normalizeError(error));
+        }
+      }
+    }
+
+    loadStaffMeta();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session]);
+
+  useEffect(() => {
+    if (!session) return;
+
+    let cancelled = false;
+
+    async function loadStaffUsers() {
+      setStaffLoading(true);
+      try {
+        const query = staffCompanyFilter !== "todas" ? `?companyId=${staffCompanyFilter}` : "";
+        const response = await apiRequest(`/api/staff-users${query}`);
+        if (cancelled) return;
+        setStaffUsers(response.data ?? []);
+        setStaffError("");
+      } catch (error) {
+        if (!cancelled) {
+          setStaffError(normalizeError(error));
+        }
+      } finally {
+        if (!cancelled) {
+          setStaffLoading(false);
+        }
+      }
+    }
+
+    loadStaffUsers();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session, staffCompanyFilter]);
+
+  const metrics = dashboard.summary;
+  const sidebarStats = dashboard.sidebarStats;
+  const dashboardAlerts = dashboard.alerts;
+  const statusOptions = reservationMeta.statusOptions ?? ["todas"];
+  const locationOptions = reservationMeta.locationOptions ?? ["todas"];
+  const staffCompanyOptions = useMemo(() => {
+    return [{ id: "todas", name: "Todas" }, ...staffMeta.companies];
+  }, [staffMeta.companies]);
+
+  const availableStaffLocations = useMemo(() => {
+    if (!staffForm.companyId) {
+      return staffMeta.locations;
+    }
+    return staffMeta.locations.filter((item) => String(item.companyId) === String(staffForm.companyId));
+  }, [staffForm.companyId, staffMeta.locations]);
 
   function updateCredentials(field, value) {
     setCredentials((current) => ({ ...current, [field]: value }));
     setLoginError("");
   }
 
-  function quickAccess([name, role, email, password]) {
-    setCredentials({ email, password });
+  function updateStaffForm(field, value) {
+    setStaffForm((current) => {
+      if (field === "companyId") {
+        const nextLocations = staffMeta.locations.filter((item) => String(item.companyId) === String(value));
+        const keepLocation = nextLocations.some((item) => String(item.id) === String(current.locationId));
+        return {
+          ...current,
+          companyId: value,
+          locationId: keepLocation ? current.locationId : (nextLocations[0] ? String(nextLocations[0].id) : ""),
+        };
+      }
+      return { ...current, [field]: value };
+    });
+    setStaffMessage("");
+    setStaffError("");
+  }
+
+  function quickAccess(account) {
+    setCredentials({ email: account.email, password: account.password });
     setLoginError("");
   }
 
-  function handleLogin(event) {
+  async function handleLogin(event) {
     event.preventDefault();
-    const match = users.find((item) => item[2].toLowerCase() === credentials.email.trim().toLowerCase() && item[3] === credentials.password);
-    if (!match) {
-      setLoginError("Credenciales invalidas. Usa uno de los accesos de prueba.");
+    setLoginLoading(true);
+    try {
+      const response = await apiRequest("/api/admin/login", {
+        method: "POST",
+        body: JSON.stringify({
+          email: credentials.email.trim(),
+          password: credentials.password,
+        }),
+      });
+
+      setSession(response.user);
+      setActiveView("dashboard");
+      setLoginError("");
+    } catch (error) {
+      setLoginError(normalizeError(error));
+    } finally {
+      setLoginLoading(false);
+    }
+  }
+
+  function resetStaffForm() {
+    setEditingStaffId(null);
+    setStaffForm(buildEmptyStaffForm(staffMeta));
+    setStaffMessage("");
+    setStaffError("");
+  }
+
+  function startEditStaff(staff) {
+    setEditingStaffId(staff.id);
+    setStaffForm({
+      companyId: String(staff.companyId ?? ""),
+      locationId: staff.locationId ? String(staff.locationId) : "",
+      fullName: staff.fullName,
+      email: staff.email,
+      phone: staff.phone ?? "",
+      role: staff.role,
+      hourlyRate: String(staff.hourlyRate ?? ""),
+      commissionPct: String(staff.commissionPct ?? ""),
+      isActive: staff.isActive,
+    });
+    setStaffMessage("");
+    setStaffError("");
+  }
+
+  async function submitStaffForm(event) {
+    event.preventDefault();
+
+    if (!staffForm.companyId || !staffForm.fullName || !staffForm.email || !staffForm.role) {
+      setStaffMessage("Completa compania, nombre, correo y rol para guardar.");
       return;
     }
-    setSession({ name: match[0], role: match[1], email: match[2] });
-    setActiveView("dashboard");
+
+    const payload = {
+      companyId: Number(staffForm.companyId),
+      locationId: staffForm.locationId ? Number(staffForm.locationId) : null,
+      fullName: staffForm.fullName.trim(),
+      email: staffForm.email.trim(),
+      phone: staffForm.phone.trim(),
+      role: staffForm.role,
+      hourlyRate: staffForm.hourlyRate === "" ? 0 : Number(staffForm.hourlyRate),
+      commissionPct: staffForm.commissionPct === "" ? 0 : Number(staffForm.commissionPct),
+      isActive: staffForm.isActive,
+    };
+
+    setStaffSaving(true);
+    try {
+      if (editingStaffId) {
+        await apiRequest(`/api/staff-users/${editingStaffId}`, {
+          method: "PATCH",
+          body: JSON.stringify(payload),
+        });
+        setStaffMessage("Usuario interno actualizado en base de datos.");
+      } else {
+        await apiRequest("/api/staff-users", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        setStaffMessage("Usuario interno creado en base de datos.");
+      }
+
+      setStaffCompanyFilter(String(payload.companyId));
+      setEditingStaffId(null);
+      setStaffForm(buildEmptyStaffForm(staffMeta));
+      const response = await apiRequest(`/api/staff-users?companyId=${payload.companyId}`);
+      setStaffUsers(response.data ?? []);
+      setStaffError("");
+    } catch (error) {
+      setStaffError(normalizeError(error));
+    } finally {
+      setStaffSaving(false);
+    }
+  }
+
+  async function deleteStaff(id) {
+    setStaffSaving(true);
+    try {
+      await apiRequest(`/api/staff-users/${id}`, { method: "DELETE" });
+      if (editingStaffId === id) {
+        setEditingStaffId(null);
+        setStaffForm(buildEmptyStaffForm(staffMeta));
+      }
+      const query = staffCompanyFilter !== "todas" ? `?companyId=${staffCompanyFilter}` : "";
+      const response = await apiRequest(`/api/staff-users${query}`);
+      setStaffUsers(response.data ?? []);
+      setStaffMessage("Usuario interno desactivado en base de datos.");
+      setStaffError("");
+    } catch (error) {
+      setStaffError(normalizeError(error));
+    } finally {
+      setStaffSaving(false);
+    }
   }
 
   function renderCards(items, formatter) {
     return (
       <div className="card-grid">
         {items.map((item) => (
-          <article key={item[0]} className="catalog-card">
-            <p>{item[0]}</p>
-            <strong>{formatter ? formatter(item) : item[1]}</strong>
-            <span>{item[2]}</span>
-            <small>{item[3]}</small>
+          <article key={item.id ?? item.name} className="catalog-card">
+            <p>{item.name}</p>
+            <strong>{formatter ? formatter(item) : item.segment ?? item.margin ?? item.occupancy ?? item.value}</strong>
+            <span>{item.nextReservation ?? item.duration ?? item.capacity ?? item.secondary ?? ""}</span>
+            <small>{item.notes ?? item.note ?? item.status ?? ""}</small>
           </article>
         ))}
       </div>
@@ -370,7 +639,7 @@ function App() {
                 </div>
                 <span className="section-note">La linea funciona mejor aqui porque importa ver el ritmo del dia y no solo el total.</span>
               </div>
-              <LineChart data={dashboardTrend} valueFormatter={(value) => money.format(value)} />
+              <LineChart data={toLineSeries(dashboard.charts.dashboardTrend)} valueFormatter={(value) => money.format(value)} />
             </article>
             <article className="section-card chart-card">
               <div className="section-heading">
@@ -381,7 +650,7 @@ function App() {
                 <span className="section-note">La torta muestra rapido que canal pesa mas dentro de la mezcla del dia.</span>
               </div>
               <DonutChart
-                data={channelMix}
+                data={toDonutSeries(dashboard.charts.channelMix)}
                 valueFormatter={(value, total) => `${Math.round((value / total) * 100)}%`}
               />
             </article>
@@ -394,7 +663,7 @@ function App() {
                 <span className="section-note">Ideal para ver composicion del workload sin leer una tabla completa.</span>
               </div>
               <DonutChart
-                data={statusMix}
+                data={toDonutSeries(dashboard.charts.statusMix)}
                 valueFormatter={(value, total) => `${value} / ${total}`}
               />
             </article>
@@ -411,7 +680,7 @@ function App() {
               <p className="eyebrow">Centro operativo</p>
               <h3>Reservas del dia</h3>
             </div>
-            <span className="section-note">{filteredReservations.length} resultados visibles</span>
+            <span className="section-note">{reservations.length} resultados visibles</span>
           </div>
           <div className="filters-row">
             <label>Buscar<input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cliente, placa o reserva" /></label>
@@ -419,7 +688,7 @@ function App() {
             <label>Sede<select value={locationFilter} onChange={(event) => setLocationFilter(event.target.value)}>{locationOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
           </div>
           <div className="reservations-list">
-            {filteredReservations.map((item) => (
+            {reservations.map((item) => (
               <article key={item.id} className="reservation-row">
                 <div className="reservation-main">
                   <div className="reservation-header">
@@ -452,11 +721,158 @@ function App() {
     }
 
     if (activeView === "clientes") {
-      return <section className="section-card">{renderCards(customers, (item) => money.format(item[2]))}</section>;
+      return <section className="section-card">{renderCards(customers, (item) => money.format(item.lifetimeValue))}</section>;
     }
 
     if (activeView === "servicios") {
-      return <section className="section-card">{renderCards(services, (item) => money.format(item[1]))}</section>;
+      return <section className="section-card">{renderCards(services, (item) => money.format(item.price))}</section>;
+    }
+
+    if (activeView === "staff") {
+      return (
+        <section className="workspace-grid">
+          <section className="section-card">
+            <div className="section-heading">
+              <div>
+                <p className="eyebrow">Staff users</p>
+                <h3>Listado por compania</h3>
+              </div>
+              <span className="section-note">
+                {staffLoading ? "Cargando staff..." : `${staffUsers.length} usuarios visibles`}
+              </span>
+            </div>
+
+            <div className="filters-row">
+              <label>
+                Compania
+                <select
+                  value={staffCompanyFilter}
+                  onChange={(event) => setStaffCompanyFilter(event.target.value)}
+                >
+                  {staffCompanyOptions.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            {staffError ? <p className="staff-message">{staffError}</p> : null}
+
+            <div className="staff-list">
+              {staffUsers.map((staff) => (
+                <article key={staff.id} className="staff-row">
+                  <div className="staff-main">
+                    <div>
+                      <p className="reservation-id">{staff.id}</p>
+                      <h4>{staff.fullName}</h4>
+                    </div>
+                    <span className={`status-badge ${staff.isActive ? "activa" : "riesgo"}`}>
+                      {staff.isActive ? "activo" : "inactivo"}
+                    </span>
+                  </div>
+                  <p className="staff-copy">
+                    {staff.company} - {staff.location || "Sin sede"} - {staff.roleLabel || staff.role}
+                  </p>
+                  <div className="reservation-meta">
+                    <span>{staff.email}</span>
+                    <span>{staff.phone || "Sin telefono"}</span>
+                    <span>{money.format(Number(staff.hourlyRate || 0))}/hora</span>
+                    <span>{staff.commissionPct}% comision</span>
+                  </div>
+                  <div className="staff-actions">
+                    <button type="button" className="ghost-button" onClick={() => startEditStaff(staff)} disabled={staffSaving}>
+                      Editar
+                    </button>
+                    <button type="button" className="ghost-button" onClick={() => deleteStaff(staff.id)} disabled={staffSaving}>
+                      Desactivar
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="section-card">
+            <div className="section-heading">
+              <div>
+                <p className="eyebrow">Formulario</p>
+                <h3>{editingStaffId ? "Editar staff_user" : "Nuevo staff_user"}</h3>
+              </div>
+              <button type="button" className="ghost-button" onClick={resetStaffForm}>
+                Limpiar
+              </button>
+            </div>
+
+            <form className="staff-form" onSubmit={submitStaffForm}>
+              <label>
+                Compania
+                <select value={staffForm.companyId} onChange={(event) => updateStaffForm("companyId", event.target.value)}>
+                  {staffMeta.companies.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Sede
+                <select value={staffForm.locationId} onChange={(event) => updateStaffForm("locationId", event.target.value)}>
+                  <option value="">Sin sede</option>
+                  {availableStaffLocations.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Nombre completo
+                <input value={staffForm.fullName} onChange={(event) => updateStaffForm("fullName", event.target.value)} placeholder="Nombre del usuario interno" />
+              </label>
+              <label>
+                Correo
+                <input type="email" value={staffForm.email} onChange={(event) => updateStaffForm("email", event.target.value)} placeholder="correo@empresa.com" />
+              </label>
+              <label>
+                Telefono
+                <input value={staffForm.phone} onChange={(event) => updateStaffForm("phone", event.target.value)} placeholder="3001234567" />
+              </label>
+              <label>
+                Rol
+                <select value={staffForm.role} onChange={(event) => updateStaffForm("role", event.target.value)}>
+                  {staffMeta.roles.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Tarifa por hora
+                <input value={staffForm.hourlyRate} onChange={(event) => updateStaffForm("hourlyRate", event.target.value)} placeholder="25000" />
+              </label>
+              <label>
+                Comision %
+                <input value={staffForm.commissionPct} onChange={(event) => updateStaffForm("commissionPct", event.target.value)} placeholder="2.5" />
+              </label>
+              <label className="checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={staffForm.isActive}
+                  onChange={(event) => updateStaffForm("isActive", event.target.checked)}
+                />
+                Usuario activo
+              </label>
+              {staffMessage ? <p className="staff-message">{staffMessage}</p> : null}
+              <button type="submit" className="primary-button" disabled={staffSaving || staffLoading}>
+                {staffSaving ? "Guardando..." : editingStaffId ? "Guardar cambios" : "Crear usuario"}
+              </button>
+            </form>
+          </section>
+        </section>
+      );
     }
 
     if (activeView === "operacion") {
@@ -466,7 +882,11 @@ function App() {
     return (
       <section className="workspace-grid">
         <section className="section-card">
-          {renderCards([["Ingreso bruto hoy", metrics.revenueToday, "Caja proyectada", "Suma de tickets activos"], ["Pendiente por cobrar", metrics.pendingCollection, "Seguimiento manual", "Reservas abiertas para caja"], ["Facturacion corporativa", 98000, "Cuenta empresa", "Bloque reservado del dia"]], (item) => money.format(item[1]))}
+          {renderCards([
+            { id: "fin-1", name: "Ingreso bruto hoy", value: metrics.revenueToday, secondary: "Caja proyectada", note: "Suma de tickets activos" },
+            { id: "fin-2", name: "Pendiente por cobrar", value: metrics.pendingCollection, secondary: "Seguimiento manual", note: "Reservas abiertas para caja" },
+            { id: "fin-3", name: "Ticket promedio", value: metrics.avgTicket, secondary: "Lectura del dia", note: `No show ${metrics.noShowRate}` },
+          ], (item) => money.format(item.value))}
         </section>
         <section className="section-card chart-card">
           <div className="section-heading">
@@ -476,7 +896,7 @@ function App() {
             </div>
             <span className="section-note">La linea ayuda a detectar tendencia de caja entre dias, no solo fotografia actual.</span>
           </div>
-          <LineChart data={weeklyCashTrend} valueFormatter={(value) => money.format(value)} />
+          <LineChart data={toLineSeries(dashboard.charts.weeklyCashTrend)} valueFormatter={(value) => money.format(value)} />
         </section>
         <section className="section-card chart-card">
           <div className="section-heading">
@@ -487,13 +907,13 @@ function App() {
             <span className="section-note">La torta deja ver de inmediato donde esta la friccion del recaudo.</span>
           </div>
           <DonutChart
-            data={paymentMix}
+            data={toDonutSeries(dashboard.charts.paymentMix)}
             valueFormatter={(value, total) => `${Math.round((value / total) * 100)}%`}
           />
         </section>
         <section className="section-card">
           <div className="section-heading"><h3>Alertas de caja</h3></div>
-          <ul className="alert-list light">{financeAlerts.map((item) => <li key={item}>{item}</li>)}</ul>
+          <ul className="alert-list light">{dashboardAlerts.map((item) => <li key={item}>{item}</li>)}</ul>
         </section>
       </section>
     );
@@ -505,38 +925,39 @@ function App() {
         <section className="login-panel">
           <div className="login-copy">
             <p className="eyebrow">Lavadero Admin</p>
-            <h1>Ingreso administrativo temporal con data quemada.</h1>
-            <p>Este login es temporal para avanzar el frontend mientras cerramos la conexion real con autenticacion y base de datos.</p>
+            <h1>Ingreso administrativo de desarrollo conectado al backend.</h1>
+            <p>Las cuentas visibles se leen desde la API y validan contra los usuarios activos almacenados en la base de datos.</p>
           </div>
           <form className="login-form" onSubmit={handleLogin}>
             <label>Correo<input type="email" value={credentials.email} onChange={(event) => updateCredentials("email", event.target.value)} placeholder="admin@lavadero.com" /></label>
             <label>Clave<input type="password" value={credentials.password} onChange={(event) => updateCredentials("password", event.target.value)} placeholder="Ingresa la clave temporal" /></label>
             {loginError ? <p className="login-error">{loginError}</p> : null}
-            <button type="submit" className="primary-button">Ingresar a la consola</button>
+            <button type="submit" className="primary-button" disabled={loginLoading}>{loginLoading ? "Validando..." : "Ingresar a la consola"}</button>
           </form>
         </section>
         <section className="section-card">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Accesos de prueba</p>
-              <h3>Usuarios mock habilitados</h3>
+              <p className="eyebrow">Accesos de desarrollo</p>
+              <h3>Usuarios disponibles desde la base de datos</h3>
             </div>
           </div>
           <div className="login-accounts">
-            {users.map((item) => (
-              <article key={item[2]} className="login-account">
+            {demoAccounts.map((item) => (
+              <article key={item.id} className="login-account">
                 <div className="login-account-top">
-                  <div className="avatar-chip">{initials(item[0])}</div>
+                  <div className="avatar-chip">{initials(item.name)}</div>
                   <div>
-                    <strong>{item[0]}</strong>
-                    <p>{item[1]}</p>
+                    <strong>{item.name}</strong>
+                    <p>{item.role}</p>
                   </div>
                 </div>
-                <span>{item[2]}</span>
-                <span>{item[3]}</span>
+                <span>{item.email}</span>
+                <span>{item.password}</span>
                 <button type="button" className="ghost-button" onClick={() => quickAccess(item)}>Usar este acceso</button>
               </article>
             ))}
+            {!demoAccounts.length ? <p className="section-note">Cargando cuentas de desarrollo...</p> : null}
           </div>
         </section>
       </div>
@@ -551,7 +972,7 @@ function App() {
         <div className="brand-block">
           <p className="eyebrow">Lavadero Admin</p>
           <h1>Consola administrativa para operar el negocio cada dia.</h1>
-          <p className="supporting-copy">Login temporal mock activo mientras conectamos autenticacion y base de datos reales.</p>
+          <p className="supporting-copy">Panel administrativo alimentado por la API y la base de datos operativa.</p>
         </div>
         <section className="session-card">
           <div className="avatar-chip">{initials(session.name)}</div>
@@ -563,15 +984,15 @@ function App() {
         </section>
         <section className="menu-summary">
           <p className="panel-kicker">Pulso rapido</p>
-          <div className="summary-grid">
-            {sidebarStats.map((item) => (
-              <article key={item[0]} className="summary-tile">
-                <strong>{item[1]}</strong>
-                <span>{item[0]}</span>
-              </article>
-            ))}
-          </div>
-        </section>
+            <div className="summary-grid">
+              {sidebarStats.map((item) => (
+                <article key={item.label} className="summary-tile">
+                  <strong>{item.value}</strong>
+                  <span>{item.label}</span>
+                </article>
+              ))}
+            </div>
+          </section>
 
         <div className="nav-groups" aria-label="Navegacion principal">
           {navGroups.map((group) => (
@@ -599,12 +1020,11 @@ function App() {
         <section className="side-panel">
           <p className="panel-kicker">Alertas del dia</p>
           <ul className="alert-list">
-            <li>2 reservas pendientes de asignar equipo.</li>
-            <li>1 no show requiere seguimiento comercial.</li>
-            <li>Facturacion corporativa en Zona Industrial antes de las 4 pm.</li>
+            {dashboard.alerts.map((item) => <li key={item}>{item}</li>)}
+            {!dashboard.alerts.length ? <li>Sin alertas activas por ahora.</li> : null}
           </ul>
         </section>
-        <button type="button" className="ghost-button logout-button" onClick={() => setSession(null)}>Cerrar sesion mock</button>
+        <button type="button" className="ghost-button logout-button" onClick={() => setSession(null)}>Cerrar sesion</button>
       </aside>
 
       <main className="content-area">
@@ -619,6 +1039,8 @@ function App() {
             <button type="button" className="primary-button">Nueva accion manual</button>
           </div>
         </header>
+        {pageLoading ? <p className="section-note top-summary">Actualizando informacion operativa...</p> : null}
+        {pageError ? <p className="staff-message">{pageError}</p> : null}
         {renderModule()}
       </main>
     </div>
